@@ -1,53 +1,53 @@
 from datetime import date
-from pydantic import BaseModel, field_validator, ConfigDict
+
+from fastapi import UploadFile
+from pydantic import BaseModel, HttpUrl, field_validator, model_validator
+
 from validation import (
     validate_name,
     validate_image,
     validate_gender,
-    validate_birth_date
+    validate_birth_date,
 )
 
 
 class ProfileCreateSchema(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     first_name: str
     last_name: str
     gender: str
     date_of_birth: date
     info: str
-    avatar: bytes
+    avatar: UploadFile
 
     @field_validator("first_name", "last_name")
     @classmethod
-    def validate_names(cls, v: str) -> str:
-        validate_name(v)
-        return v.lower()
+    def check_name(cls, value: str) -> str:
+        validate_name(value)
+        return value.lower()
 
     @field_validator("gender")
     @classmethod
-    def validate_gen(cls, v: str) -> str:
-        validate_gender(v)
-        return v
+    def check_gender(cls, value: str) -> str:
+        validate_gender(value)
+        return value
 
     @field_validator("date_of_birth")
     @classmethod
-    def validate_dob(cls, v: date) -> date:
-        validate_birth_date(v)
-        return v
+    def check_birth_date(cls, value: date) -> date:
+        validate_birth_date(value)
+        return value
 
     @field_validator("info")
     @classmethod
-    def validate_inf(cls, v: str) -> str:
-        if not v or not v.strip():
+    def check_info(cls, value: str) -> str:
+        if not value.strip():
             raise ValueError("Info field cannot be empty or contain only spaces.")
-        return v
+        return value
 
-    @field_validator("avatar")
-    @classmethod
-    def validate_av(cls, v: bytes) -> bytes:
-        validate_image(v)
-        return v
+    @model_validator(mode="after")
+    def check_avatar(self) -> "ProfileCreateSchema":
+        validate_image(self.avatar)
+        return self
 
 
 class ProfileResponseSchema(BaseModel):
@@ -58,7 +58,4 @@ class ProfileResponseSchema(BaseModel):
     gender: str
     date_of_birth: date
     info: str
-    avatar: str
-
-    class Config:
-        from_attributes = True
+    avatar: HttpUrl
